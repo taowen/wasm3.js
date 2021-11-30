@@ -1,5 +1,5 @@
 source ./emsdk/emsdk_env.sh --build=Release
-emcc -DWREN_OPT_RANDOM -DWREN_OPT_META \
+emcc \
     wasm3/source/m3_bind.c \
     wasm3/source/m3_code.c \
     wasm3/source/m3_compile.c \
