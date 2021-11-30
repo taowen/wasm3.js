@@ -20,16 +20,6 @@ EM_JS(void, js_ShowError, (M3Result result), {
     }
 });
 
-EM_JS(M3RawCall, js_AddFunctionBySignature, (
-        const char * const    i_moduleName,
-        const char * const    i_functionName,
-        const char * const    i_signature), {
-    if (Module.AddFunctionBySignature) {
-        return Module.AddFunctionBySignature({ moduleName: i_moduleName, functionName: i_functionName, signature: i_signature });
-    }
-    return 0;
-});
-
 EMSCRIPTEN_KEEPALIVE
 void init() {
     env = m3_NewEnvironment ();
