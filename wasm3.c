@@ -14,6 +14,12 @@
 
 IM3Environment env;
 
+EM_JS(void, js_ShowError, (M3Result result), {
+    if (Module.ShowError) {
+        Module.ShowError(result);
+    }
+});
+
 EMSCRIPTEN_KEEPALIVE
 void init() {
     env = m3_NewEnvironment ();
@@ -31,15 +37,21 @@ void free_runtime(IM3Runtime runtime) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-void load(IM3Runtime runtime, uint8_t* wasm, size_t fsize) {
+IM3Module load(IM3Runtime runtime, uint8_t* wasm, size_t fsize) {
     M3Result result = m3Err_none;
 
     IM3Module module;
     result = m3_ParseModule (env, &module, wasm, fsize);
-    if (result) return;
-
+    if (result) {
+        js_ShowError(result);
+        return 0;
+    };
     result = m3_LoadModule (runtime, module);
-    if (result) return;
+    if (result) {
+        js_ShowError(result);
+        return 0;
+    };
+    return module;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -48,10 +60,16 @@ uint32_t call(IM3Runtime runtime, int argc, const char* argv[]) {
 
     IM3Function f;
     result = m3_FindFunction (&f, runtime, argv[0]);
-    if (result) return -1;
+    if (result) {
+        js_ShowError(result);
+        return -1;
+    };
 
     result = m3_CallArgv (f, argc-1, argv+1);
-    if (result) return -2;
+    if (result) {
+        js_ShowError(result);
+        return -2;
+    };
 
     return *(uint64_t*)(runtime->stack);
 }
