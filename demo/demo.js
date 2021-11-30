@@ -150,7 +150,7 @@ class ObjectPool {
         const ptr = this.malloc(ptrArray.length * 4);
         const offset = ptr >> 2;
         for (let i = 0; i < ptrArray.length; i++) {
-            this.wasm3.HEAP32[offset + i] = ptrArray[i];
+            this.wasm3.HEAPU32[offset + i] = ptrArray[i];
         }
         return ptr;
     }
@@ -178,6 +178,22 @@ function loadDemo() {
     return { runtime, module };
 }
 
+function linkFunctions(module) {
+    const objectPool = new ObjectPool(wasm3);
+    try {
+        for (const [index, linkedFunction] of wasm3.LinkedFunctions.entries()) {
+            wasm3._link_function(module, 
+                objectPool.encodeString(linkedFunction.moduleName),
+                objectPool.encodeString(linkedFunction.functionName),
+                objectPool.encodeString(linkedFunction.signature),
+                index
+            );
+        } 
+    } finally {
+        objectPool.dispose();
+    }
+}
+
 function callDemo(runtime) {
     const objectPool = new ObjectPool(wasm3);
     try {
@@ -195,15 +211,6 @@ function callDemo(runtime) {
     await wasm3.ready;
     wasm3._init();
     const { runtime, module } = loadDemo();
-    const objectPool = new ObjectPool(wasm3);
-    for (const [index, linkedFunction] of wasm3.LinkedFunctions.entries()) {
-        wasm3._link_function(module, 
-            objectPool.encodeString(linkedFunction.moduleName),
-            objectPool.encodeString(linkedFunction.functionName),
-            objectPool.encodeString(linkedFunction.signature),
-            index
-        );
-    } 
-    objectPool.dispose();
-    const result = callDemo(runtime);
+    linkFunctions(module);
+    callDemo(runtime);
 })();
