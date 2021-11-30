@@ -2,8 +2,60 @@ const wasm3 = require('../wasm3')();
 const fs = require('fs');
 
 // callback from wasm3.c
-wasm3.ShowError = (ptr) => {
-    console.log("!!! error", decodePtrString(ptr));
+Object.assign(wasm3, {
+    LinkedFunctions: [
+        {
+            moduleName: 'wasi_snapshot_preview1',
+            functionName: 'fd_write',
+            signature: 'i(i*i*)',
+            run(file_descriptor, iovs, iovs_len, nwritten) {
+                const ptr = this + wasm3.HEAPU32[iovs >> 2];
+                const len = wasm3.HEAPU32[(iovs >> 2) + 1];
+                console.log(decodeStringView(ptr, len));
+            }
+        }
+    ],
+    ShowError(ptr) {
+        console.log("!!! error", decodePtrString(ptr));
+    },
+})
+
+function decodeStringView(ptr, len) {
+    const octets = wasm3.HEAP8.subarray(ptr, ptr + len);
+    var string = "";
+    var i = 0;
+    while (i < octets.length) {
+        var octet = octets[i];
+        var bytesNeeded = 0;
+        var codePoint = 0;
+        if (octet <= 0x7F) {
+            bytesNeeded = 0;
+            codePoint = octet & 0xFF;
+        } else if (octet <= 0xDF) {
+            bytesNeeded = 1;
+            codePoint = octet & 0x1F;
+        } else if (octet <= 0xEF) {
+            bytesNeeded = 2;
+            codePoint = octet & 0x0F;
+        } else if (octet <= 0xF4) {
+            bytesNeeded = 3;
+            codePoint = octet & 0x07;
+        }
+        if (octets.length - i - bytesNeeded > 0) {
+            var k = 0;
+            while (k < bytesNeeded) {
+                octet = octets[i + k + 1];
+                codePoint = (codePoint << 6) | (octet & 0x3F);
+                k += 1;
+            }
+        } else {
+            codePoint = 0xFFFD;
+            bytesNeeded = octets.length - i;
+        }
+        string += String.fromCodePoint(codePoint);
+        i += bytesNeeded + 1;
+    }
+    return string
 }
 
 function decodePtrString(ptr) {
@@ -122,8 +174,8 @@ function loadDemo() {
     const buff = fs.readFileSync('./demo.wasm');
     const ptr = wasm3._malloc(buff.length);
     wasm3.HEAP8.set(buff, ptr);
-    wasm3._load(runtime, ptr, buff.length);
-    return runtime;
+    const module = wasm3._load(runtime, ptr, buff.length);
+    return { runtime, module };
 }
 
 function callDemo(runtime) {
@@ -138,9 +190,20 @@ function callDemo(runtime) {
     }
 }
 
+
 (async () => {
     await wasm3.ready;
     wasm3._init();
-    const runtime = loadDemo();
+    const { runtime, module } = loadDemo();
+    const objectPool = new ObjectPool(wasm3);
+    for (const [index, linkedFunction] of wasm3.LinkedFunctions.entries()) {
+        wasm3._link_function(module, 
+            objectPool.encodeString(linkedFunction.moduleName),
+            objectPool.encodeString(linkedFunction.functionName),
+            objectPool.encodeString(linkedFunction.signature),
+            index
+        );
+    } 
+    objectPool.dispose();
     const result = callDemo(runtime);
 })();
