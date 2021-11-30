@@ -13,7 +13,7 @@ emcc \
     wasm3.c \
     -I wasm3/source \
     -o wasm3.js \
-    -O3 -s WASM=1 \
+    -O3 -s WASM=0 \
     -s ASSERTIONS=0 -s ENVIRONMENT='node' \
     -s JS_MATH=1 -s WASM_ASYNC_COMPILATION=0 \
     -s MODULARIZE=1 -s EXPORT_ES6=0 \
