@@ -13,6 +13,14 @@ Object.assign(wasm3, {
                 const len = wasm3.HEAPU32[(iovs >> 2) + 1];
                 process.stdout.write(decodeStringView(ptr, len));
             }
+        },
+        {
+            moduleName: 'env',
+            functionName: 'main.copyBytesFromJsToGo',
+            signature: 'v(iiiii)',
+            run(dst, src, length) {
+                wasm3.HEAP8.set(wasm3.HEAP8.subarray(src, src + length), this + dst);
+            }
         }
     ],
     ShowError(ptr) {
@@ -146,6 +154,46 @@ class ObjectPool {
         return ptr;
     }
 
+    encodeBytes(string) {
+        var octets = [];
+        var length = string.length;
+        var i = 0;
+        while (i < length) {
+            var codePoint = string.codePointAt(i);
+            var c = 0;
+            var bits = 0;
+            if (codePoint <= 0x0000007F) {
+                c = 0;
+                bits = 0x00;
+            } else if (codePoint <= 0x000007FF) {
+                c = 6;
+                bits = 0xC0;
+            } else if (codePoint <= 0x0000FFFF) {
+                c = 12;
+                bits = 0xE0;
+            } else if (codePoint <= 0x001FFFFF) {
+                c = 18;
+                bits = 0xF0;
+            }
+            octets.push(bits | (codePoint >> c));
+            c -= 6;
+            while (c >= 0) {
+                octets.push(0x80 | ((codePoint >> c) & 0x3F));
+                c -= 6;
+            }
+            i += codePoint >= 0x10000 ? 2 : 1;
+        }
+        const ptr = this.malloc(octets.length);
+        this.wasm3.HEAP8.set(octets, ptr);
+        return [ptr, octets.length];
+    }
+
+    encodeU32(val) {
+        const ptr = this.malloc(4);
+        this.wasm3.HEAPU32[ptr >> 2] = val;
+        return ptr;
+    }
+
     encodePtrArray(ptrArray) {
         const ptr = this.malloc(ptrArray.length * 4);
         const offset = ptr >> 2;
@@ -197,7 +245,8 @@ function linkFunctions(module) {
 function callDemo(runtime) {
     const objectPool = new ObjectPool(wasm3);
     try {
-        const args = [objectPool.encodeString("runDemo")];
+        const [bufferPtr, bufferLen] = objectPool.encodeBytes('hello world');
+        const args = [objectPool.encodeString("runDemo"), objectPool.encodeU32(bufferPtr), objectPool.encodeU32(bufferLen)];
         const ptr = objectPool.encodePtrArray(args);
         const result = wasm3._call(runtime, args.length, ptr);
         return result;

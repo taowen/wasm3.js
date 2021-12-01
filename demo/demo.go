@@ -1,9 +1,11 @@
 package main
 
-var counter = 0
-
 //export runDemo
-func runDemo() {
-	println("hello", counter)
-	counter = counter + 1
+func runDemo(ptrString uint32, length uint32) {
+	bytes := make([]byte, length)
+	copyBytesFromJsToGo(&bytes[0], ptrString, length)
+	println(string(bytes))
 }
+
+//import copyBytesFromJsToGo
+func copyBytesFromJsToGo(dst *byte, src uint32, length uint32)

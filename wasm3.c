@@ -65,7 +65,7 @@ uint32_t call(IM3Runtime runtime, int argc, const char* argv[]) {
         return -1;
     };
 
-    result = m3_CallArgv (f, argc-1, argv+1);
+    result = m3_Call (f, argc-1, (const void **)argv+1);
     if (result) {
         js_ShowError(result);
         M3ErrorInfo info;
@@ -121,4 +121,9 @@ M3Result link_function(IM3Module      io_module,
         js_ShowError(err);
     }
     return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+M3MemoryHeader * mem(IM3Runtime runtime) {
+    return runtime->memory.mallocated;
 }
