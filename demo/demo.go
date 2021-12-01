@@ -1,7 +1,9 @@
 package main
 
-func main() {
-	for i := 0; i < 10; i++ {
-		println("hello~~~")
-	}
+var counter = 0
+
+//export runDemo
+func runDemo() {
+	println("hello", counter)
+	counter = counter + 1
 }

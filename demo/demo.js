@@ -11,7 +11,7 @@ Object.assign(wasm3, {
             run(file_descriptor, iovs, iovs_len, nwritten) {
                 const ptr = this + wasm3.HEAPU32[iovs >> 2];
                 const len = wasm3.HEAPU32[(iovs >> 2) + 1];
-                console.log(decodeStringView(ptr, len));
+                process.stdout.write(decodeStringView(ptr, len));
             }
         }
     ],
@@ -197,7 +197,7 @@ function linkFunctions(module) {
 function callDemo(runtime) {
     const objectPool = new ObjectPool(wasm3);
     try {
-        const args = [objectPool.encodeString("_start")];
+        const args = [objectPool.encodeString("runDemo")];
         const ptr = objectPool.encodePtrArray(args);
         const result = wasm3._call(runtime, args.length, ptr);
         return result;
@@ -212,5 +212,11 @@ function callDemo(runtime) {
     wasm3._init();
     const { runtime, module } = loadDemo();
     linkFunctions(module);
+    // take snapshot
+    var snapshot = new Uint8Array(wasm3.HEAP8.byteLength);
+    snapshot.set(wasm3.HEAP8);
+    callDemo(runtime);
+    // restore snapshot
+    wasm3.HEAP8.set(snapshot);
     callDemo(runtime);
 })();
