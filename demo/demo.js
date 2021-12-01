@@ -245,7 +245,10 @@ function linkFunctions(module) {
 function callDemo(runtime) {
     const objectPool = new ObjectPool(wasm3);
     try {
-        const [bufferPtr, bufferLen] = objectPool.encodeBytes('[]');
+        const [bufferPtr, bufferLen] = objectPool.encodeBytes(`[{
+            "name": "apple",
+            "price": 102
+        }]`);
         const args = [objectPool.encodeString("runDemo"), objectPool.encodeU32(bufferPtr), objectPool.encodeU32(bufferLen)];
         const ptr = objectPool.encodePtrArray(args);
         const result = wasm3._call(runtime, args.length, ptr);
