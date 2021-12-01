@@ -213,6 +213,7 @@ function callDemo(runtime) {
     const { runtime, module } = loadDemo();
     linkFunctions(module);
     // take snapshot
+    console.log('snapshot size', wasm3.HEAP8.byteLength);
     var snapshot = new Uint8Array(wasm3.HEAP8.byteLength);
     snapshot.set(wasm3.HEAP8);
     callDemo(runtime);
